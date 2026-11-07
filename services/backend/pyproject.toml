@@ -1,0 +1,24 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Django + DRF + Channels: REST API, WebSocket gateway and order storage."
+requires-python = ">=3.12"
+dependencies = [
+    "common",
+    "django>=5.1,<6",
+    "djangorestframework>=3.15",
+    "channels>=4.2",
+    "channels-redis>=4.2",
+    "daphne>=4.1",
+    "dj-database-url>=2.3",
+    "psycopg[binary]>=3.2",
+    "redis>=5.2",
+]
+
+[tool.uv]
+# The backend is an application run from its own folder (manage.py), not a
+# library other code imports, so uv doesn't need to build and install it.
+package = false
+
+[tool.uv.sources]
+common = { workspace = true }

@@ -1,0 +1,93 @@
+# Run everything:  docker compose up --build
+# Then open:       http://localhost:8080
+# RabbitMQ admin:  http://localhost:15672  (guest / guest)
+
+x-python-env: &python-env
+  REDIS_URL: redis://redis:6379/0
+  RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+  DATABASE_URL: postgres://app:app@postgres:5432/app
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+services:
+  # ---------- infrastructure ----------
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app"]
+      interval: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    ports:
+      - "15672:15672" # management UI, handy for watching the order queue
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 30
+
+  # ---------- our services ----------
+  backend:
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+      args: { SERVICE: backend }
+    working_dir: /app/services/backend
+    command: sh -c "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p 8000 config.asgi:application"
+    environment:
+      <<: *python-env
+      DJANGO_DEBUG: "0"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-change-me}
+    # depends_on + condition: start only once the database and Redis are
+    # actually ready, not merely "container started".
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  market-adapter:
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+      args: { SERVICE: market-adapter }
+    command: market-adapter
+    environment: *python-env
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+
+  twap-executor:
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+      args: { SERVICE: twap-executor }
+    command: twap-executor
+    environment: *python-env
+    restart: unless-stopped
+    depends_on:
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx.Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

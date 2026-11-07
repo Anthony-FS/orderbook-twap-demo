@@ -1,0 +1,30 @@
+# uv workspace root.
+#
+# This file has no [project] table on purpose: the root is a "virtual" workspace
+# that only ties the Python packages together. Each service has its own
+# pyproject.toml with its own dependencies, but they all share ONE lockfile
+# (uv.lock), so every service runs against exactly the same library versions.
+
+[tool.uv.workspace]
+members = ["packages/*", "services/*"]
+
+# Dev-only tools, installed with `uv sync` but never inside the Docker images.
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-django>=4.9",
+    "ruff>=0.7",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+pythonpath = ["services/backend"]
+testpaths = ["packages", "services"]
+python_files = ["test_*.py", "tests.py"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

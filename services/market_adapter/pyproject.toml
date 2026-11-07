@@ -1,0 +1,19 @@
+[project]
+name = "market-adapter"
+version = "0.1.0"
+description = "Connects to an exchange, keeps a local order book in sync and publishes it to Redis."
+requires-python = ">=3.12"
+dependencies = [
+    "common",
+    "redis>=5.2",
+]
+
+[project.scripts]
+market-adapter = "market_adapter.main:run"
+
+[tool.uv.sources]
+common = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

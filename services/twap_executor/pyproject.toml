@@ -1,0 +1,20 @@
+[project]
+name = "twap-executor"
+version = "0.1.0"
+description = "Consumes TWAP orders from RabbitMQ, slices them and simulates fills against the live book."
+requires-python = ">=3.12"
+dependencies = [
+    "common",
+    "redis>=5.2",
+    "aio-pika>=9.4",
+]
+
+[project.scripts]
+twap-executor = "twap_executor.main:run"
+
+[tool.uv.sources]
+common = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
